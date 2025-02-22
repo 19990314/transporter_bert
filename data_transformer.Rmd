@@ -1,0 +1,407 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## data prep
+```{r}
+library(Seurat)
+library(Matrix)
+
+combined_cell@meta.data$cell_type <- Idents(combined_cell)
+combined_cell@meta.data$organ_celltype <- Idents(combined_celltype)
+combined_cell@meta.data$organ <- Idents(combined_organ)
+```
+
+
+```{r}
+# storage code
+saveRDS(combined_cell, "combined_cell.rds")
+
+# saving on object in RData format
+save.image("02182025.rds")
+
+# load the data again
+load("~/Library/CloudStorage/GoogleDrive-schen601@usc.edu/My Drive/transportor/transporter_bert/02182025.rds")
+load("H:/My Drive/transportor/transporter_bert/02182025.rds")
+
+
+combined_cell <- readRDS("02142025.RData")
+```
+
+
+```{r}
+# Load Seurat object
+options(future.globals.maxSize = 2000 * 1024^2)
+Idents(combined_cell) <- combined_cell@meta.data$organ
+all.markers <- FindAllMarkers(object = combined_cell,verbose = FALSE, logfc.threshold = 0.2)
+write.csv(all.markers, "deg_across_organs.csv")
+```
+
+
+```{r}
+# Export expression matrix
+write.csv(as.matrix(seurat_obj@assays$RNA@counts), "expression_matrix.csv")
+
+# Export metadata (cell labels, sample origin, etc.)
+write.csv(seurat_obj@meta.data, "metadata.csv")
+
+# Export gene features
+write.csv(seurat_obj@assays$RNA@features, "gene_features.csv")
+```
+
+
+## working dir
+```{r}
+setwd("~/Library/CloudStorage/GoogleDrive-schen601@usc.edu/My Drive/transportor/transporter_bert")
+```
+
+
+## deg filtering
+```{r}
+# break marker table
+library(dplyr)
+
+############### split degs: all.markers ###############
+# create an output directory to store the files
+output_dir <- file.path(dirname(getwd()), "deg")
+dir.create(output_dir, showWarnings = FALSE)
+
+# Split data by the "organ" column and save each subset
+split_data <- split(all.markers, all.markers$cluster)
+
+# Save each subset as a separate CSV file
+for (organ_name in names(split_data)) {
+  file_name <- paste0(output_dir, "/", organ_name, ".csv")
+  write.csv(split_data[[organ_name]], file_name, row.names = FALSE)
+}
+```
+
+```{r}
+slc_map <- read_csv("group-752(slc_family_HGNC).csv")
+gene_symbols <- rownames(combined_cell[["RNA"]])
+gene_symbols <- unique(gene_symbols)
+```
+
+
+```{r}
+library(tidyr)
+required_cols <- c("Approved symbol", "Previous symbols", "Aliases")
+
+# Convert the relevant columns to character
+slc_map <- slc_map %>%
+  mutate(across(all_of(required_cols), as.character))
+
+# genes from SLC family
+gene_symbols_slc <- slc_map %>%
+  select(all_of(required_cols)) %>%
+  pivot_longer(cols = everything(), values_to = "gene") %>%
+  separate_rows(gene, sep = ",\\s*") %>%   # Split by comma and remove spaces
+  distinct() %>%  # Remove duplicate entries
+  na.omit()       # Remove NA values
+gene_symbols_slc <- unique(gene_symbols_slc$gene)
+
+
+# shared slc
+slc_targets <- intersect(tolower(gene_symbols), tolower(gene_symbols_slc))
+```
+
+```{r}
+# filter slc degs
+filtered.markers <- all.markers %>%
+  mutate(gene = tolower(gene)) %>% 
+  filter(gene %in% slc_targets)  # Keep only rows where gene is in slc_targets
+
+############### split degs: filetred.markers ###############
+# create an output directory to store the files
+output_dir <- file.path(dirname(getwd()), "deg_SLC")
+dir.create(output_dir, showWarnings = FALSE)
+
+# Split data by the "organ" column and save each subset
+split_data <- split(filtered.markers, filtered.markers$cluster)
+
+# Save each subset as a separate CSV file
+for (organ_name in names(split_data)) {
+  file_name <- paste0(output_dir, "/", organ_name, ".csv")
+  write.csv(split_data[[organ_name]], file_name, row.names = TRUE)
+}
+```
+
+# dot plot: sandra's deg
+```{r}
+library(readr)
+brain.markers.sandra <- read_csv("Brain_EC_markers_fc1_padj005.csv")
+brain.markers.sandra <- brain.markers.sandra[(brain.markers.sandra$p_val_adj <pv & brain.markers.sandra$avg_log2FC > fc_thres & brain.markers.sandra$pct.1>pct_thres),]
+
+
+slc_targets.sandra <- intersect(tolower(gene_symbols_slc), tolower(brain.markers.sandra$Gene))
+filtered.brain.markers.sandra <- brain.markers.sandra %>% filter(tolower(Gene) %in% slc_targets.sandra)
+slc_targets.sandra <- filtered.brain.markers.sandra$Gene
+write.csv(filtered.brain.markers.sandra, "filtered_Brain_EC_markers_fc1_padj005.csv", row.names = TRUE)
+
+
+dot_plot <- DotPlot(combined_cell, features = slc_targets.sandra[1:27], group.by = "organ") +
+  labs(x = "Organ", y = "Gene") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+
+ggsave("dot_plot_brain.pdf", plot = dot_plot, width = 7, height = 10)
+```
+
+## sc analysis
+```{r}
+my36colors <- c('#E5D2DD', '#53A85F', '#F1BB72', '#F3B1A0', '#D6E7A3', '#57C3F3', '#5F3D69', '#C5DEBA', '#58A4C3', '#E4C755', '#F7F398','#585658',
+         '#AA9A59', '#E63863','#E95C59', '#E59CC4', '#AB3282', '#23452F', '#BD956A', '#8C549C', '#476D87',
+         '#9FA3A8', '#E0D4CA', '#E39A35', '#C1E6F3', '#6778AE', '#91D0BE', '#B53E2B',
+         '#712820', '#DCC1DD', '#CCE0F5', '#CCC9E6', '#625D9E', '#68A180', '#3A6963',
+         '#968175')
+
+DimPlot(combined_cell, reduction = "umap", group.by = "organ", label = TRUE, repel = TRUE,cols = my36colors)
+```
+
+## deg analysis
+```{r}
+library(tidyverse)
+library(RColorBrewer)
+library(scales)
+library(reshape2)
+library(tidyverse)
+library(harmony)
+library(readxl)
+library(readr)
+
+# brain slc degs
+brain_slc_degs <- read_csv("~/Library/CloudStorage/GoogleDrive-schen601@usc.edu/My Drive/transportor/deg_SLC/Brain.csv")
+
+plot_gene <- brain_slc_degs[,c("cluster","...1")]
+colnames(plot_gene)[colnames(plot_gene) == "...1"] <- "gene"
+plot_gene$gene <- sub("\\..*", "", plot_gene$gene)
+
+#plot_gene <- plot_gene[1:20,]
+```
+
+```{r}
+pct_thres <- 0.2
+fc_thres <- 0.2
+pv <- 0.05
+
+brain_slc_degs_filtered <- brain_slc_degs[(brain_slc_degs$p_val<pv & abs(brain_slc_degs$avg_log2FC) > fc_thres),]
+
+
+brain_slc_degs_filtered <- brain_slc_degs_filtered[(((brain_slc_degs_filtered$avg_log2FC > fc_thres)&(brain_slc_degs_filtered$pct.1>pct_thres))|((brain_slc_degs_filtered$avg_log2FC < -fc_thres)&(brain_slc_degs_filtered$pct.2>pct_thres))),]
+
+
+plot_gene <- brain_slc_degs_filtered[,c("cluster","...1")]
+colnames(plot_gene)[colnames(plot_gene) == "...1"] <- "gene"
+plot_gene$gene <- sub("\\..*", "", plot_gene$gene)
+```
+
+# violin
+```{r}
+# Load required libraries
+library(ggplot2)
+library(Seurat)
+library(gridExtra)
+
+# Define output PDF file
+pdf("brain_deg_violin_plot.pdf", width = 6, height = 6)  # Adjust width & height as needed
+
+# Set up plot counter
+plot_list <- list()
+plot_count <- 0
+plots_per_page <- 4  # 2*2 grid per page
+
+# Generate violin plots
+candidates <- plot_gene$gene
+candidates <- c(deg_v_plot1,deg_v_plot2,deg_v_plot3)
+
+for (gene in candidates) {
+  if (gene %in% rownames(combined_cell)) {  # Ensure the gene exists in the data
+    p <- VlnPlot(combined_cell, features = gene, group.by = "organ", pt.size = 0.1) +
+      ggtitle(gene) +
+      theme(plot.title = element_text(hjust = 0.5, size = 8))
+
+    plot_list[[length(plot_list) + 1]] <- p
+    plot_count <- plot_count + 1
+
+    # When reaching 9 plots, print the page
+    if (plot_count %% plots_per_page == 0 || gene == tail(candidates, 1)) {
+      do.call(grid.arrange, c(plot_list, ncol = 2, nrow = 2))
+      plot_list <- list()  # Reset plot list
+    }
+  }
+}
+
+# Close the PDF file
+dev.off()
+
+```
+
+# break pdf
+```{r}
+# Load necessary library
+library(pdftools)
+
+# Define input PDF file
+input_pdf <- "raw_violin_plots.pdf"  # Replace with your actual PDF file
+
+# Read the number of pages in the PDF
+total_pages <- pdf_info(input_pdf)$pages  # Should be 26
+
+# Define output file names
+output_files <- c("raw_violin_part1.pdf", "raw_violin_part2.pdf", "raw_violin_part3.pdf", "raw_violin_part4.pdf")
+
+# Define page splits (first 6, next 6, next 6, last 8)
+page_splits <- list(1:6, 7:12, 13:18, 19:26)
+
+# Loop through each subset and save to a new PDF
+for (i in seq_along(output_files)) {
+  pdf_subset(input_pdf, pages = page_splits[[i]], output = output_files[i])
+  message("Saved: ", output_files[i])
+}
+```
+
+
+```{r}
+# self
+deg_v_plot1 <- c("Slco1c1", "Slc22a8", "Slc38a3", "Slc38a5", "Slc1a1", "Slc19a3", "Stra6","Slc6a13","Slc38a5")
+
+#shared with Testis
+deg_v_plot2 <- c("Mfsd2a", "Slc7a5", "Slc16a4", "Mfsd7c","Slc35f2", "Slc19a3", "Mfsd7c", "Slc35f2")
+
+#w/ bladder
+deg_v_plot3 <- c("Slc38a11", "Slc5a5")
+
+
+```
+
+# which candidate fully show up
+```{r}
+# Load required library
+library(dplyr)
+
+# Define the list of candidate genes (replace with your actual list)
+candidates <- c(deg_v_plot1, deg_v_plot2, deg_v_plot3)  # Example candidate genes
+
+# Define the required organ conditions
+required_organs <- c("Brain", "Bladder", "Liver", "Heart", "Intestine",
+                     "Colon", "Testis", "Muscle", "Lung", "Spleen", "Kidney")
+
+# Filter for candidate genes only
+all.markers.filtered.by.candidates <- all.markers %>%
+  filter(gene %in% candidates)
+
+# Count how many unique organs each gene appears in
+gene_organ_count <- all.markers.filtered.by.candidates %>%
+  group_by(gene) %>%
+  summarize(organs_present = list(unique(cluster)), count = n())
+
+# Check which genes appear in **all 10 organs**
+genes_fully_present <- gene_organ_count %>%
+  filter(all(required_organs %in% organs_present)) %>%
+  pull(gene)  # Extract the gene names
+
+# Print results
+print("Genes found in all 10 organs:")
+print(genes_fully_present)
+```
+
+
+# dot plot
+```{r}
+# Load required libraries
+library(ggplot2)
+#library(dplyr)
+
+# Transform p-value
+deg_table <- all.markers.filtered.by.candidates %>%
+  mutate(p_size = -log10(p_val+0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000001))  # Transform P-value
+
+# Create the dot plot
+dot_plot <- ggplot(deg_table, aes(x = cluster, y = gene)) +
+  geom_point(aes(size = p_size, color = avg_log2FC)) +  # Dot size = -log10(p_val), Color = log2FC
+  scale_size_continuous(range = c(1, 8)) +  # Adjust dot size range
+  scale_color_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +  # Color gradient
+  theme_minimal() +
+  labs(x = "Organ", y = "Gene", size = "-log10(P-value)", color = "Log2 Fold Change") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Display the plot
+print(dot_plot)
+```
+
+
+# Brain markers
+
+
+# heatmap
+```{r}
+DoHeatmap(object = combined_hm, features = features, slot = "data", group.colors = my36colors)+ scale_fill_gradientn(colors = c('#3b69b5',  "white", '#b53b3b'))
+```
+
+
+
+
+```{r}
+#plot_gene <- read_excel("plotgene.xlsx")
+plot_gene$cluster=factor(plot_gene$cluster,levels = unique(plot_gene$cluster))
+plot_gene <- plot_gene%>%arrange(cluster,gene)
+
+combined_cell@meta.data$cell_type=factor(combined_cell@meta.data$cell_type,levels = levels(plot_gene$cluster))
+```
+
+```{r}
+combined_cell@meta.data$CB=rownames(combined_cell@meta.data)
+#integrated@meta.data=integrated@meta.data%>%inner_join(integrated,by="CB")
+rownames(combined_cell@meta.data)=combined_cell@meta.data$CB
+```
+
+
+```{r}
+color_ct=c(brewer.pal(12, "Set3")[-c(2,3,9,12)],"#b3b3b3",
+           brewer.pal(5, "Set1")[2],
+           brewer.pal(3, "Dark2")[1],
+           "#fc4e2a","#fb9a99","#f781bf","#e7298a")
+names(color_ct)=levels(plot_gene$cluster)
+
+### 主代码 ######################################################################
+#vln.df=as.data.frame(integrated[["RNA"]]@data[plot_gene$gene,])
+vln.df=as.data.frame(as.data.frame(as.matrix(GetAssayData(combined_cell[["RNA"]], slot = "data")))[plot_gene$gene, ])
+vln.df$gene=rownames(vln.df)
+vln.df=melt(vln.df,id="gene")
+colnames(vln.df)[c(2,3)]=c("CB","exp")
+
+anno=combined_cell@meta.data[,c("CB","cell_type")]
+vln.df=inner_join(vln.df,anno,by="CB")
+vln.df$gene=factor(vln.df$gene,levels = plot_gene$gene)
+vln.df <- vln.df[!is.na(vln.df$cell_type), ]
+```
+
+```{r}
+# 当你想竖直方向排版这张图片时：
+vln.df%>%ggplot(aes(cell_type,exp))+
+  geom_violin(aes(fill=cell_type),scale = "width")+ 
+  #如果想最终呈现出来的图，是根据基因涂色的，也就是一个基因一种颜色，应改为：aes(fill=gene)
+  #一般而言，基因数多于细胞类型数，当根据基因涂色时，配色方案有点繁琐，所以不推荐aes(fill=gene)
+  facet_grid(gene~.,scales = "free_y")+
+  scale_fill_manual(values = color_ct)+
+  scale_y_continuous(expand = c(0,0))+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.title.x.bottom = element_blank(),
+    axis.ticks.x.bottom = element_blank(),
+    axis.text.x.bottom = element_text(angle = 45,hjust = 1,vjust = NULL,color = "black",size = 14),
+    axis.title.y.left = element_blank(),
+    axis.ticks.y.left = element_blank(),
+    axis.text.y.left = element_blank(),
+    
+    legend.position = "none",
+    
+    panel.spacing.y = unit(0, "cm"),
+    strip.text.y = element_text(angle=0,size = 14,hjust = 0),
+    strip.background.y = element_blank()
+  )
+ggsave("brain_slc_markers.pdf",device = "pdf",width = 18,height = 90,units = "cm")
+```

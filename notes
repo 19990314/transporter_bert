@@ -1,0 +1,38 @@
+conda create --name transformer python=3.10
+conda activate transformer
+d
+
+conda install conda-forge::scanpy
+conda install conda-forge::transformers
+
+
+========================================
+Transporter Gene Databases
+Transporter Classification Database (TCDB):
+	•	A curated database of transporters classified into functional families.
+HUGO Gene Nomenclature Committee (HGNC) - Transporter Genes:
+	•	Provides a standard list of human transporter genes.
+Gene Ontology (GO) Annotations for Transporters:
+	•	Use GO terms like: GO:0005215 (Transporter activity) GO:0015932 (Nucleotide transport) GO:0006810 (Transport)
+
+========================================
+
+
+1. Collect genes
+2. DEG
+3. GSEA
+4. Plots: heatmap (transporters across enriched in specific tissues)
+
+
+
+
+========================================
+file tracking:
+02142025.RData: 
+integrated Seurat Obj
+02182025.RData: 
+cleaned r data containing: 1. integrated Seurat Obj; 2. all.markers from FindAllmakers across organs
+group-752(slc_family_HGNC).csv:
+Mapping table curated by HUGO Gene Nomenclature Committee (HGNC) - SLC family
+02182025.RData: 
+Slc genes & plot objects
