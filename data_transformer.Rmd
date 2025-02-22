@@ -19,7 +19,7 @@ combined_cell@meta.data$organ <- Idents(combined_organ)
 saveRDS(combined_cell, "combined_cell.rds")
 
 # saving on object in RData format
-save.image("02182025.rds")
+save.image("02212025.rds")
 
 # load the data again
 load("~/Library/CloudStorage/GoogleDrive-schen601@usc.edu/My Drive/transportor/transporter_bert/02182025.rds")
