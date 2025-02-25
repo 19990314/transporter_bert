@@ -86,7 +86,7 @@ gene_symbols <- unique(gene_symbols)
 
 ```{r}
 library(tidyr)
-required_cols <- c("Approved symbol", "Previous symbols", "Aliases")
+required_cols <- c("Approved symbol", "Previous symbols", "Aliases", "Alias symbols", "Approved.symbol", "Previous.symbols")
 
 # Convert the relevant columns to character
 slc_map <- slc_map %>%
@@ -128,25 +128,115 @@ for (organ_name in names(split_data)) {
 ```
 
 # dot plot: sandra's deg
+
+```{r}
+# inputs HGNC
+hgnc_dir <- "/Users/chen/Library/CloudStorage/GoogleDrive-schen601@usc.edu/My Drive/transportor/hgnc/"
+hgnc_filename_list <- list.files(path = hgnc_dir, full.names = TRUE)
+
+# Function to check file type and read accordingly
+read_hgnc_smart <- function(file) {
+  first_line <- readLines(file, n = 1, warn = FALSE)
+  # Check if the first line contains "sep=,"
+  if (grepl("^sep=,", first_line)) {
+    return(read.csv(file, skip = 1))  # Read as CSV, skipping first line
+  } else {
+    return(read_delim(file, delim = "\t", escape_double = FALSE, trim_ws = TRUE))
+  }
+}
+
+hgnc_df_list <- lapply(hgnc_filename_list, read_file_smart)
+names(hgnc_df_list) <- basename(hgnc_filename_list)
+```
+
+
 ```{r}
 library(readr)
+
+# BBB DEG targets
 brain.markers.sandra <- read_csv("Brain_EC_markers_fc1_padj005.csv")
 brain.markers.sandra <- brain.markers.sandra[(brain.markers.sandra$p_val_adj <pv & brain.markers.sandra$avg_log2FC > fc_thres & brain.markers.sandra$pct.1>pct_thres),]
+```
 
 
+```{r}
+# intersection with HGNC
+output_dir_hgnc_filtered_deg <- file.path(dirname(getwd()), "deg_brain_filtered_by_HGNC")
+dir.create(output_dir_hgnc_filtered_deg, showWarnings = FALSE)
+
+for (file_name in names(hgnc_df_list)) {
+  # Get the current table
+  trasporter_map_i <- hgnc_df_list[[file_name]]
+  
+  # Convert the relevant columns to character
+  exist_cols <- colnames(trasporter_map_i)[colnames(trasporter_map_i) %in% required_cols]
+  trasporter_map_i <- trasporter_map_i %>%
+    mutate(across(all_of(exist_cols), as.character))
+  
+  # genes from HGNC
+  gene_symbols_hgnc_i <- trasporter_map_i %>%
+    select(all_of(exist_cols)) %>%
+    pivot_longer(cols = everything(), values_to = "gene") %>%
+    separate_rows(gene, sep = ",\\s*") %>%   # Split by comma and remove spaces
+    distinct() %>%  # Remove duplicate entries
+    na.omit()       # Remove NA values
+  gene_symbols_hgnc_i <- unique(gene_symbols_hgnc_i$gene)
+
+  # shared slc
+  transporter_targets <- intersect(tolower(brain.markers.sandra$Gene), tolower(gene_symbols_hgnc_i))
+
+  # Filter the table based on matched genes
+  filtered_table <- brain.markers.sandra %>%
+    filter(tolower(Gene) %in% transporter_targets)
+  
+  # Restore original case for gene names
+  #filtered_table$gene <- brain.markers.sandra$Gene[brain.markers.sandra$gene %in% transporter_targets]
+  
+  print(file_name)
+  print(length(filtered_table$Gene))
+  cat(paste(filtered_table$Gene, ", "))
+
+  # Define output file path
+  output_file <- file.path(output_dir_hgnc_filtered_deg, paste0("filtered_brain_DEGs_by_", file_name))
+
+  # Save filtered results
+  write.csv(filtered_table, output_file, row.names = FALSE)
+  
+  # dot plot
+  if (length(filtered_table$Gene) < 25) {
+    feature_genes <- filtered_table$Gene
+  } else {
+    feature_genes <- filtered_table$Gene[1:25]
+  }
+  dot_plot <- DotPlot(combined_cell, features = feature_genes, group.by = "organ") +
+  labs(x = "Organ", y = "Gene") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle(gsub("\\.csv$", "", file_name)) +
+  coord_flip()
+  print(dot_plot)
+  #ggsave("dot_plot_brain.pdf", plot = dot_plot, width = 7, height = 10)
+  }
+```
+
+
+```{r}
+# intersction: gene_symbols_slc & brain.markers.sandra
 slc_targets.sandra <- intersect(tolower(gene_symbols_slc), tolower(brain.markers.sandra$Gene))
 filtered.brain.markers.sandra <- brain.markers.sandra %>% filter(tolower(Gene) %in% slc_targets.sandra)
 slc_targets.sandra <- filtered.brain.markers.sandra$Gene
 write.csv(filtered.brain.markers.sandra, "filtered_Brain_EC_markers_fc1_padj005.csv", row.names = TRUE)
 
-
+# dot plot of the expressions
 dot_plot <- DotPlot(combined_cell, features = slc_targets.sandra[1:27], group.by = "organ") +
   labs(x = "Organ", y = "Gene") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   coord_flip()
-
 ggsave("dot_plot_brain.pdf", plot = dot_plot, width = 7, height = 10)
 ```
+
+
+
+
 
 ## sc analysis
 ```{r}
