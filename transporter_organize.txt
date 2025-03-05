@@ -1,0 +1,76 @@
+================================================Gene Summary==============================================================================
+
+ABC_transporters
+11 genes:  Abcg2  Abcc4  Abcc6  Abca5  Abcb6  Abcc10  Abca2  Abca9  Abca6  Abcb9  Abcb7 
+
+Amine_receptors
+3 genes:  Adrb1  Chrm3  Chrm2
+
+ATPase
+14 genes:  Atp10a  Atp8a1  Atp10d  Atp2c1  Atp1a2  Atp11a  Atp2b4  Atp13a5  Atp11b  Atp11c  Atp7a  Atp9a  Atp8b1  Atp8a2
+
+Calcium_channels
+5 genes:  Itpr3  Cacna1a  Catsper2  Cacnb4  Cacna1e
+
+Cholinergic_receptors
+2 genes:  Chrm3  Chrm2
+
+Glutamate_receptors
+2 genes:  Grin3b  Grin2c
+
+GPCR
+59 genes:  Fzd6  Gpr4  S1pr1  Gpr182  Eltd1  Gpr116  Cd97  Lphn2  Gpr56  Gpr124  Gper1  Gpr160  Ptger1  Gpr17  F2r  Gpr85  Lphn3  Aplnr  Gpr125  Calcrl  Lphn1  Ednrb  Adgra2  Adrb1  Fzd3  Adgrg3  Tbxa2r  Mrgpre  Ackr2  P2ry14  Fzd1  P2ry6  Adgrl2  Ackr4  F2rl3  C5ar2  Adora2a  Lpar1  Adgrd1  Adgrl1  Adcyap1r1  Gpr153  Celsr2  Chrm3  Agtr1a  S1pr3  Fzd2  Adgrg6  Mrgprf  Crhr1  S1pr2  Chrm2  Adgrb2  Cnr2  Cysltr1  Cmklr1  Hcar1  Gprc5a  Gprc5b 
+
+Potassium_channels
+11 genes:  Kcnj2  Elk3  Kcna5  Kcnb1  Kcnk2  Kcnh2  Kcnh1  Kcnn4  Kcnk5  Kcnk6  Kcnj8
+
+SLC
+101 genes:  Slc2a1  Slco1c1  Slc22a8  Slc7a5  Slc38a3  Slc6a6  Slc7a1  Slc39a10  Slc40a1  Mfsd2a  Slc16a4  Slc1a1  Slc43a3  Slco2b1  Slc16a2  Slc38a5  Ucp2  Slco2a1  Slc3a2  Slc31a1  Slc16a1  Slc19a3  Slc39a8  Slc30a1  Slc52a3  Slc35f2  Mfsd7c  Slc29a1  Tmem184b  Net1  Slc52a2  Slc46a3  Stra6  Sfxn3  Slc25a1  Slc16a9  Slc25a33  Slc25a42  Slc9a2  Ank  Slc5a6  Slc7a6  Slc7a3  Slc16a11  Slc36a1  Cnnm2  Slco3a1  Slc25a30  Slc37a3  Slc25a27  Slc35f5  Slc22a5  Slc35e2  Slc25a20  Tmem104  Slc28a2  Slc30a10  Letm2  Slc16a6  Slc25a32  Slc25a40  Slc19a1  Slc25a12  Slc23a2  Slc10a7  Slc27a1  Sfxn4  Ctns  Slc1a4  Slc1a2  Slc19a2  Nipal1  Slc35d2  Slc39a11  Slc7a11  Slc11a2  Rft1  Slc1a3  Slc10a3  Slc20a2  Slc18a2  Slc6a1  Slc26a6  Gda  Slc45a3  Mfsd7b  Slc39a14  Slc7a2  Slc15a3  Slc22a18  Mfsd14b  Cnnm4  Slc39a2  Slc39a6  Slc30a2  Slc34a2  Slc9a9  Slc24a5  Slc6a2  Odc1  Sv2b
+
+Sodium_channels
+1 genes:  Scn1b
+
+TRP_channels
+4 genes:  Mcoln1  Trpm6  Pkd2l2  Trpv4
+
+
+======================================================My categorization==================================================================================
+
+[*Receptors*]
+Glutamate Receptors: Grin3b, Grin2c
+Cholinergic Receptors: Chrm3, Chrm2
+Amine Receptors: Adrb1, Chrm3, Chrm2
+GPCRs:
+a. Frizzled Family: Fzd1, Fzd2, Fzd3, Fzd6
+b. Adhesion GPCRs: Adgrb2, Adgra2, Adgrd1, Adgrg3, Adgrg6, Adgrl1, Adgrl2, Lphn3, Cd97, Gpr56
+c. Lysophospholipid Receptors: S1pr1, S1pr2, S1pr3, Lpar1
+d. Purine Receptors: P2ry14, P2ry6, Adora2a
+e. Peptide Receptors: Crhr1, Adcyap1r1
+f. Other GPCRs: Gpr4, Gpr182, Gpr116, Gpr124, Gper1, Gpr160, Ptger1, Gpr17, F2r, Gpr85, Aplnr, Gpr125, Calcrl, Lphn1, Ednrb, Tbxa2r, Mrgpre, Ackr2, Ackr4, F2rl3, C5ar2, Gpr153, Celsr2, Agtr1a, Mrgprf, Cnr2, Cysltr1, Cmklr1, Hcar1, Gprc5a, Gprc5b
+
+
+[*Ion Channels*]
+Calcium Channels: Itpr3, Cacna1a, Catsper2, Cacnb4, Cacna1e
+Potassium Channels: Kcnj2, Elk3, Kcna5, Kcnb1, Kcnk2, Kcnh2, Kcnh1, Kcnn4, Kcnk5, Kcnk6, Kcnj8
+Sodium Channels: Scn1b
+TRP (Transient Receptor Potential) Channels: Mcoln1, Trpm6, Pkd2l2, Trpv4
+
+
+[*Pumps*]
+ATPase (Active Transport Pumps): Atp10a, Atp8a1, Atp10d, Atp2c1, Atp1a2, Atp11a, Atp2b4, Atp13a5, Atp11b, Atp11c, Atp7a, Atp9a, Atp8b1, Atp8a2
+ABC Transporters (ATP-Binding Cassette Transporters): Abcg2, Abcc4, Abcc6, Abca5, Abcb6, Abcc10, Abca2, Abca9, Abca6, Abcb9, Abcb7
+
+
+[*Transporters*]
+SLC (Solute Carrier) Transporters:
+a. Neurotransmitter Transporters: SLC1A1, SLC1A2, SLC1A3, SLC6A1, SLC6A2, SLC6A6, SLC18A2
+b. Ion and Metal Transporters: SLC11A2, SLC30A1, SLC30A2, SLC30A10, SLC39A2, SLC39A6, SLC39A8, SLC39A10, SLC39A11, SLC39A14, SLC40A1
+c. Monosaccharide, Amino Acid, and Nucleotide Transporters: SLC2A1, SLC7A1, SLC7A2, SLC7A3, SLC7A5, SLC7A6, SLC7A11, SLC16A1, SLC16A2, SLC16A4, SLC16A6, SLC16A9, SLC16A11, SLC19A1, SLC19A2, SLC19A3, SLC25A1, SLC25A12, SLC25A20, SLC25A27, SLC25A30, SLC25A32, SLC25A33, SLC25A40, SLC25A42, SLC29A1, SLC35D2, SLC35E2, SLC35F2, SLC35F5, SLC43A3, SLC46A3, SLC52A2, SLC52A3
+d. Drug and Toxin Transporters: SLC22A5, SLC22A8, SLC22A18, SLCO1C1, SLCO2A1, SLCO2B1, SLCO3A1
+e. Phosphate and Sulfate Transporters: SLC20A2, SLC34A2, SLC26A6
+f. Others: SLC5A6, SLC6A6, SLC10A3, SLC10A7, SLC15A3, SLC18A2, SLC27A1, SLC28A2, SLC29A1, SLC35D2, SLC35E2, SLC35F2, SLC35F5, SLC43A3, SLC45A3, SLC46A3, SLC52A2, SLC52A3
+
+
+======================================================My notes: Just in case==================================================================================
+S1P 受体（特别是 S1PR1 和 S1PR2）在 神经炎症 和 免疫细胞活化 方面起关键作用
+LPA 和 S1P 受体调控 神经元迁移、轴突生长和突触可塑性，影响大脑的正常发育
