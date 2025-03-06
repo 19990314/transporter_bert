@@ -19,7 +19,7 @@ combined_cell@meta.data$organ <- Idents(combined_organ)
 saveRDS(combined_cell, "combined_cell.rds")
 
 # saving on object in RData format
-save.image("02182025.rds")
+save.image("03052025.rds")
 
 # load the data again
 load("~/Library/CloudStorage/GoogleDrive-schen601@usc.edu/My Drive/transportor/transporter_bert/02182025.rds")
@@ -38,16 +38,27 @@ all.markers <- FindAllMarkers(object = combined_cell,verbose = FALSE, logfc.thre
 write.csv(all.markers, "deg_across_organs.csv")
 ```
 
+```{r}
+brain.pericyte.markers <- FindMarkers(object = combined_cell, ident.1 = "Brain_mural", ident.2 = c("Bladder_mural", "Heart_mural", "Colon_mural", "Muscle_mural"), group.by = "organ_celltype", verbose = FALSE, logfc.threshold = 0.2)
+write.csv(brain.pericyte.markers, "deg_pericyte.csv")
+```
+
 
 ```{r}
 # Export expression matrix
-write.csv(as.matrix(seurat_obj@assays$RNA@counts), "expression_matrix.csv")
+write.csv(as.matrix(combined_cell@assays$RNA@counts), "expression_matrix.csv")
 
 # Export metadata (cell labels, sample origin, etc.)
 write.csv(seurat_obj@meta.data, "metadata.csv")
 
 # Export gene features
 write.csv(seurat_obj@assays$RNA@features, "gene_features.csv")
+
+
+write.csv(as.matrix(combined_cell[,1:2000]@assays$RNA@counts), "expression_matrix_test.csv")
+write.csv(combined_cell[,1:2000]@meta.data, "metadata_test.csv")
+write.csv(row.names(combined_cell[,1:2000]@assays$RNA), "gene_names_test.csv")
+
 ```
 
 
@@ -78,6 +89,7 @@ for (organ_name in names(split_data)) {
 ```
 
 ```{r}
+# - ignore
 slc_map <- read_csv("group-752(slc_family_HGNC).csv")
 gene_symbols <- rownames(combined_cell[["RNA"]])
 gene_symbols <- unique(gene_symbols)
@@ -86,7 +98,7 @@ gene_symbols <- unique(gene_symbols)
 
 ```{r}
 library(tidyr)
-required_cols <- c("Approved symbol", "Previous symbols", "Aliases")
+required_cols <- c("Approved symbol", "Previous symbols", "Aliases", "Alias symbols", "Approved.symbol", "Previous.symbols")
 
 # Convert the relevant columns to character
 slc_map <- slc_map %>%
@@ -127,26 +139,225 @@ for (organ_name in names(split_data)) {
 }
 ```
 
-# dot plot: sandra's deg
+# dot plot
+```{r}
+# inputs HGNC dataset -> save into c(df)
+hgnc_dir <- "/Users/chen/Library/CloudStorage/GoogleDrive-schen601@usc.edu/My Drive/transportor/hgnc/"
+hgnc_filename_list <- list.files(path = hgnc_dir, full.names = TRUE)
+
+# check file type and read accordingly
+read_hgnc_smart <- function(file) {
+  first_line <- readLines(file, n = 1, warn = FALSE)
+  # Check if the first line contains "sep=,"
+  if (grepl("^sep=,", first_line)) {
+    return(read.csv(file, skip = 1))  # Read as CSV, skipping first line
+  } else {
+    return(read_delim(file, delim = "\t", escape_double = FALSE, trim_ws = TRUE))
+  }
+}
+
+hgnc_df_list <- lapply(hgnc_filename_list, read_file_smart)
+names(hgnc_df_list) <- basename(hgnc_filename_list)
+```
+
+
 ```{r}
 library(readr)
+
+# BBB DEG targets
 brain.markers.sandra <- read_csv("Brain_EC_markers_fc1_padj005.csv")
 brain.markers.sandra <- brain.markers.sandra[(brain.markers.sandra$p_val_adj <pv & brain.markers.sandra$avg_log2FC > fc_thres & brain.markers.sandra$pct.1>pct_thres),]
 
+# pc targets
+brain.pericyte.markers <- brain.pericyte.markers[(brain.pericyte.markers$p_val_adj <pv & brain.pericyte.markers$avg_log2FC > fc_thres & brain.pericyte.markers$pct.1>pct_thres),]
+```
 
+
+```{r}
+generate_dotplot <- function(combined_cell, sorted_feature_genes, file_name) {
+  dot_plot <- DotPlot(combined_cell, features = rev(sorted_feature_genes), group.by = "organ_sorted") +
+  labs(x = "Organ", y = "Gene") +
+  scale_x_discrete(position = "bottom") +  # Move organ labels to the top
+  scale_y_discrete(position = "right") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.x.top = element_text(angle = 45, hjust = 0, vjust = 0),
+        axis.ticks.x.top = element_line(),
+        axis.title.x = element_blank()) +
+  ggtitle(gsub("\\.csv$", "", file_name)) +
+  coord_flip() 
+  print(dot_plot)
+  
+  # save into phf
+  plot_height <- max(2, (1.2 + (length(sorted_feature_genes) * 0.3)))
+  ggsave(paste0("dot_plot_", gsub("\\.csv$", "", file_name), ".pdf"), plot = dot_plot, width = 7, height = plot_height,limitsize = FALSE)
+}
+```
+
+```{r}
+sort_gene_by_ubiquity <- function(combined_cell, feature_genes, file_name) {
+  # Extract expression data for the selected genes
+  expr_matrix <- as.data.frame(GetAssayData(combined_cell, assay = "RNA", slot = "data")[feature_genes, ])
+  #if (file_name == "Sodium_channels.csv"){
+  if (length(feature_genes) == 1){
+    expr_matrix <- as.data.frame(t(expr_matrix))
+    row.names(expr_matrix) <- c(feature_genes)
+  }
+
+  # Convert matrix to data frame and add organ labels
+  expr_df <- as.data.frame(expr_matrix) %>% rownames_to_column(var = "gene") %>% pivot_longer(cols = -gene, names_to = "cell", values_to = "expression")
+  # Ensure metadata row names are accessible
+  meta_data_df <- combined_cell@meta.data %>%
+    rownames_to_column(var = "cell") %>%  # Convert row names to "cell" column
+    select(cell, organ)  # Select relevant columns
+  # Perform left join with metadata
+  expr_df <- expr_df %>%
+    left_join(meta_data_df, by = "cell")
+  
+  # Count the number of unique organs in which each gene is expressed
+  gene_organ_count <- expr_df %>%
+    group_by(gene) %>%
+    filter(expression > 0) %>%  # Consider only expressed genes
+    summarize(num_organs = n_distinct(organ)) %>%
+    arrange(desc(num_organs))  # Sort by ubiquity
+  
+  # return genes
+  return(gene_organ_count$gene)
+}
+```
+
+
+
+```{r}
+# intersection with HGNC
+#output_dir_hgnc_filtered_deg <- file.path(dirname(getwd()), "deg_brain_filtered_by_HGNC")
+output_dir_hgnc_filtered_deg <- file.path(dirname(getwd()), "pericyte_DEG_filtered_by_HGNC")
+dir.create(output_dir_hgnc_filtered_deg, showWarnings = FALSE)
+
+# each transporter family
+transporter_dictionary <- list()
+filenames <- names(hgnc_df_list)
+#filenames <- c("Glycine_receptors.csv")
+for (file_name in filenames) {
+  
+  # =====================intersection: HGNC & brain========================
+  # Get the current table
+  trasporter_map_i <- hgnc_df_list[[file_name]]
+  
+  # Convert the interest columns to character
+  exist_cols <- colnames(trasporter_map_i)[colnames(trasporter_map_i) %in% required_cols]
+  trasporter_map_i <- trasporter_map_i %>%
+    mutate(across(all_of(exist_cols), as.character))
+  
+  # genes from HGNC
+  gene_symbols_hgnc_i <- trasporter_map_i %>%
+    select(all_of(exist_cols)) %>%
+    pivot_longer(cols = everything(), values_to = "gene") %>%
+    separate_rows(gene, sep = ",\\s*") %>%   # Split by comma and remove spaces
+    distinct() %>%  # Remove duplicate entries
+    na.omit()       # Remove NA values
+  gene_symbols_hgnc_i <- unique(gene_symbols_hgnc_i$gene)
+
+  # shared slc
+  
+  #transporter_targets <- intersect(tolower(brain.markers.sandra$Gene), tolower(gene_symbols_hgnc_i))
+  brain.pericyte.markers$Gene <- row.names(brain.pericyte.markers)
+  transporter_targets <- intersect(tolower(brain.pericyte.markers$Gene), tolower(gene_symbols_hgnc_i))
+
+  # Filter the table based on matched genes
+  #filtered_table <- brain.markers.sandra %>%
+  #  filter(tolower(Gene) %in% transporter_targets)
+  filtered_table <- brain.pericyte.markers %>%
+    filter(tolower(Gene) %in% transporter_targets)
+  
+  # Restore original case for gene names
+  #filtered_table$gene <- brain.markers.sandra$Gene[brain.markers.sandra$gene %in% transporter_targets]
+  
+  print(gsub("\\.csv$", "", file_name))
+  if (length(filtered_table$Gene) == 0) {
+    next
+  }
+  cat(paste(c(length(filtered_table$Gene), "genes: ",paste0(filtered_table$Gene, " "))))
+
+  # re-save the new DEGs (shared)
+  output_file <- file.path(output_dir_hgnc_filtered_deg, paste0("filtered_brain_pc_DEGs_by_", file_name))
+  write.csv(filtered_table, output_file, row.names = FALSE)
+  
+  # =====================prepare plot inputs: organs and genes========================
+  if (length(filtered_table$Gene) < 25) {
+    feature_genes <- filtered_table$Gene
+  } else {
+    feature_genes <- filtered_table$Gene[1:25]
+  }
+  
+  # Brain sorted to top
+  combined_cell@meta.data$organ_sorted <- factor(combined_cell@meta.data$organ, levels = c("Brain", setdiff(unique(combined_cell@meta.data$organ), "Brain")))
+
+  # sort genes by ubiquiousness
+  sorted_feature_genes <- sort_gene_by_ubiquity(combined_cell, feature_genes, file_name)
+  transporter_dictionary[[gsub("\\.csv$", "", file_name)]] <- sorted_feature_genes
+  
+  # ================================dot plot===================================
+  generate_dotplot(combined_cell, sorted_feature_genes, file_name)
+  }
+```
+
+
+```{r}
+transporter_dictionary_for_table <- transporter_dictionary
+for (i in names(transporter_dictionary)) {
+  transporter_dictionary_for_table[[i]] <- cat(paste0(transporter_dictionary[[i]]))
+}
+```
+
+
+```{r}
+transporter_dictionary_for_figure <- transporter_dictionary
+#transporter_dictionary_for_figure$GPCR <- transporter_dictionary$GPCR[1:17]
+
+ion_channel_genes <- c(transporter_dictionary_for_figure$Calcium_channels, transporter_dictionary_for_figure$Potassium_channels, transporter_dictionary_for_figure$Sodium_channels, transporter_dictionary_for_figure$TRP_channels)
+ion_channel_genes <- unique(ion_channel_genes)
+ion_channel_genes <- sort_gene_by_ubiquity(combined_cell, ion_channel_genes, "x")
+transporter_dictionary_for_figure$ion_channel_genes <- ion_channel_genes
+
+receptor_genes <- c(transporter_dictionary$Amine_receptors, transporter_dictionary$Cholinergic_receptors,transporter_dictionary$Glutamate_receptors, transporter_dictionary$Glycine_receptors)
+receptor_genes <- unique(receptor_genes)
+receptor_genes <- sort_gene_by_ubiquity(combined_cell, receptor_genes, "x")
+transporter_dictionary_for_figure$receptor_genes <- receptor_genes
+
+pump_genes <- c(transporter_dictionary$ABC_transporters, transporter_dictionary$ATPase)
+pump_genes <- unique(pump_genes)
+pump_genes <- sort_gene_by_ubiquity(combined_cell, pump_genes, "x")
+transporter_dictionary_for_figure$pump_genes <- pump_genes
+
+generate_dotplot(combined_cell, ion_channel_genes, paste("pc_Ion_Channels.csv"))
+generate_dotplot(combined_cell, receptor_genes, paste("pc_Receptors.csv"))
+generate_dotplot(combined_cell, transporter_dictionary_for_figure$GPCR, paste("pc_GPCR.csv"))
+generate_dotplot(combined_cell, pump_genes, paste("pc_Pump.csv"))
+
+
+```
+
+
+
+
+```{r}
+# intersction: gene_symbols_slc & brain.markers.sandra
 slc_targets.sandra <- intersect(tolower(gene_symbols_slc), tolower(brain.markers.sandra$Gene))
 filtered.brain.markers.sandra <- brain.markers.sandra %>% filter(tolower(Gene) %in% slc_targets.sandra)
 slc_targets.sandra <- filtered.brain.markers.sandra$Gene
 write.csv(filtered.brain.markers.sandra, "filtered_Brain_EC_markers_fc1_padj005.csv", row.names = TRUE)
 
-
+# dot plot of the expressions
 dot_plot <- DotPlot(combined_cell, features = slc_targets.sandra[1:27], group.by = "organ") +
   labs(x = "Organ", y = "Gene") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   coord_flip()
-
 ggsave("dot_plot_brain.pdf", plot = dot_plot, width = 7, height = 10)
 ```
+
+
+
+
 
 ## sc analysis
 ```{r}
